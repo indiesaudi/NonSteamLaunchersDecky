@@ -1331,6 +1331,7 @@
           label: 'Hytale',
           URL: '',
           streaming: false,
+          x86Only: true,
           enabled: false,
           urlimage: 'https://cdn2.steamgriddb.com/thumb/8474b278f3d751b0a743e97ff395d23a.jpg'
       },
@@ -1339,6 +1340,7 @@
           label: 'NVIDIA GeForce NOW',
           URL: '',
           streaming: false,
+          x86Only: true,
           enabled: false,
           urlimage: 'https://cdn2.steamgriddb.com/hero_thumb/b2619bbe281deeefea3675dfed719fd7.jpg'
       },
@@ -2421,7 +2423,12 @@
   const initialOptions = sitesList;
   const Content = ({ serverAPI }) => {
       console.log('Content rendered');
-      const launcherOptions = initialOptions.filter((option) => option.streaming === false);
+      // Hide launchers that only ship x86_64 Linux builds when the backend runs on arm64
+      const [isArm64, setIsArm64] = React.useState(false);
+      React.useEffect(() => {
+          serverAPI.callPluginMethod('is_arm64', {}).then((res) => setIsArm64(res.success && res.result === true));
+      }, []);
+      const launcherOptions = initialOptions.filter((option) => option.streaming === false && !(isArm64 && 'x86Only' in option && option.x86Only));
       const streamingOptions = initialOptions.filter((option) => option.streaming === true);
       const { settings, setAutoScan, setPlaytimeEnabled, } = useSettings(serverAPI);
       // Random Greetings

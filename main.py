@@ -883,6 +883,9 @@ class Plugin:
     async def get_setting(self, key, default):
         return self.settings.getSetting(key, default)
 
+    async def is_arm64(self):
+        return IS_ARM64
+
     async def install(self, selected_options, install_chrome, separate_app_ids, start_fresh, nslgamesaves, update_proton_ge, note, up, operation="Install"):
         decky_plugin.logger.info('install was called')
 

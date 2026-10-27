@@ -923,10 +923,8 @@ launcher_entries=(
   "$stove_value|$stove_text"
   "$bigfish_value|$bigfish_text"
   "$gryphlink_value|$gryphlink_text"
-  "FALSE|Hytale"
   "FALSE|Xodus Nexus"
   "FALSE|RemotePlayWhatever"
-  "FALSE|NVIDIA GeForce NOW"
   "FALSE|Moonlight Game Streaming"
 )
 

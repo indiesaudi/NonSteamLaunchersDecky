@@ -212,6 +212,7 @@ export const sitesList = [
     label: 'Hytale',
     URL: '',
     streaming: false,
+    x86Only: true,
     enabled: false,
     urlimage: 'https://cdn2.steamgriddb.com/thumb/8474b278f3d751b0a743e97ff395d23a.jpg'
   },
@@ -220,6 +221,7 @@ export const sitesList = [
     label: 'NVIDIA GeForce NOW',
     URL: '',
     streaming: false,
+    x86Only: true,
     enabled: false,
     urlimage: 'https://cdn2.steamgriddb.com/hero_thumb/b2619bbe281deeefea3675dfed719fd7.jpg'
   },
