@@ -572,6 +572,17 @@ class Plugin:
                 {"name": 'nvidiaGeForcenow', "env_var": None, "label": 'NVIDIA GeForce NOW', "file_check": f"{decky_user_home}/.local/share/flatpak/app/com.nvidia.geforcenow/x86_64/master/active/files/bin/GeForceNOW"},
                 {"name": 'moonlightGameStreaming', "env_var": None, "label": 'Moonlight', "file_check": f"{decky_user_home}/.local/share/flatpak/app/com.moonlight_stream.Moonlight/{FLATPAK_ARCH}/stable/active/files/bin/moonlight"},
                 {"name": 'hytale', "env_var": None, "label": 'Hytale', "file_check": f"{decky_user_home}/.local/share/flatpak/app/com.hypixel.HytaleLauncher/current/active/files/bin/hytale-launcher-wrapper"},
+                # Native launchers: a distro-provided install (ArmadaOS ships Heroic) counts too
+                {"name": 'heroicGamesLauncher', "env_var": None, "label": 'Heroic Games Launcher', "file_check": [
+                    "/usr/bin/heroic",
+                    f"{decky_user_home}/.local/share/applications/Heroic.AppImage",
+                    f"{decky_user_home}/.local/share/flatpak/app/com.heroicgameslauncher.hgl/current",
+                    "/var/lib/flatpak/app/com.heroicgameslauncher.hgl/current",
+                ]},
+                {"name": 'prismLauncher', "env_var": None, "label": 'Prism Launcher', "file_check": [
+                    f"{decky_user_home}/.local/share/flatpak/app/org.prismlauncher.PrismLauncher/current",
+                    "/var/lib/flatpak/app/org.prismlauncher.PrismLauncher/current",
+                ]},
             ]
 
             installed_launchers = []
@@ -581,16 +592,11 @@ class Plugin:
             env_vars = {}
 
             try:
-                # Check if the env_vars file exists
-                if not os.path.exists(env_vars_path):
-                    await ws.send_json({"installedLaunchers": []})
-                    await ws.close()
-                    return
-
-
-                # Read the env_vars file
-                with open(env_vars_path, 'r') as f:
-                    lines = f.readlines()
+                # Read the env_vars file; without one, only the file checks below can match
+                lines = []
+                if os.path.exists(env_vars_path):
+                    with open(env_vars_path, 'r') as f:
+                        lines = f.readlines()
 
                 # Parse the lines and extract launcher-related environment variables
                 for line in lines:
@@ -609,7 +615,8 @@ class Plugin:
 
                     # Check if the launcher has a file check (like 'remotePlayWhatever')
                     if launcher_file_check:
-                        if os.path.exists(launcher_file_check):
+                        paths = launcher_file_check if isinstance(launcher_file_check, list) else [launcher_file_check]
+                        if any(os.path.exists(p) for p in paths):
                             installed_launchers.append(launcher_name)
 
                     # Otherwise, check the environment variable (standard launchers)
