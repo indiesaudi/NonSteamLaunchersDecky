@@ -3226,6 +3226,57 @@ if [[ $options == *"Moonlight Game Streaming"* ]]; then
 fi
 
 
+echo "# Installing Heroic Games Launcher (Native arm64)...please wait..."
+
+if [[ $options == *"Heroic Games Launcher"* ]]; then
+    heroic_appimage="${logged_in_home}/.local/share/applications/Heroic.AppImage"
+
+    # Never replace a distro-provided Heroic (ArmadaOS ships one in /usr/bin)
+    if command -v heroic &>/dev/null || \
+       flatpak info --user com.heroicgameslauncher.hgl &>/dev/null || \
+       flatpak info --system com.heroicgameslauncher.hgl &>/dev/null; then
+        echo "Heroic Games Launcher is already installed. Skipping download."
+    else
+        heroic_url=$(curl -fsSL \
+            https://api.github.com/repos/Heroic-Games-Launcher/HeroicGamesLauncher/releases/latest |
+            grep -oE 'https://[^"]*Heroic-[^"]*-linux-arm64\.AppImage' |
+            head -n 1)
+
+        if [[ -z "$heroic_url" ]]; then
+            echo "Failed to find the Heroic arm64 AppImage release."
+        else
+            mkdir -p "$(dirname "$heroic_appimage")"
+            if wget -O "$heroic_appimage" "$heroic_url"; then
+                chmod +x "$heroic_appimage"
+                echo "Heroic Games Launcher downloaded to $heroic_appimage"
+            else
+                echo "Failed to download Heroic Games Launcher."
+            fi
+        fi
+    fi
+fi
+
+
+echo "# Installing Prism Launcher (Minecraft, Native arm64)...please wait..."
+
+if [[ $options == *"Prism Launcher"* ]]; then
+    if flatpak info --user org.prismlauncher.PrismLauncher &>/dev/null || \
+       flatpak info --system org.prismlauncher.PrismLauncher &>/dev/null; then
+        echo "Prism Launcher is already installed (user or system)."
+    else
+        echo "Installing Prism Launcher Flatpak app (user scope)..."
+
+        if flatpak install -y --user flathub org.prismlauncher.PrismLauncher; then
+            echo "Prism Launcher installed successfully."
+        else
+            echo "Failed to install Prism Launcher."
+        fi
+    fi
+fi
+
+
+
+
 echo "99.3"
 echo "# Installing Hytale (Native Linux) ...please wait..."
 
