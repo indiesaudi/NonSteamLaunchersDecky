@@ -13,12 +13,14 @@ import urllib.parse
 import urllib.request
 import urllib.error
 import subprocess
+import shlex
 import base64
 from base64 import b64encode
 from concurrent.futures import ThreadPoolExecutor
 import externals.requests as requests
 import externals.vdf as vdf
 from externals.steamgrid import SteamGridDB
+from scanners.host_arch import FLATPAK_ARCH
 from scanners.ea_scanner import ea_scanner
 from scanners.epic_scanner import epic_games_scanner
 from scanners.ubisoft_scanner import ubisoft_scanner
@@ -249,7 +251,7 @@ def addCustomSite(customSiteJSON, selectedBrowser):
 
         if "chrome" in browser_lower:
             launch_options = (
-                f'run --branch=stable --arch=x86_64 --command=/app/bin/chrome '
+                f'run --branch=stable --arch={FLATPAK_ARCH} --command=/app/bin/chrome '
                 f'--file-forwarding com.google.Chrome @@u @@ '
                 f'--window-size=1280,800 --force-device-scale-factor=1.00 '
                 f'--device-scale-factor=1.00 --start-fullscreen '
@@ -263,18 +265,18 @@ def addCustomSite(customSiteJSON, selectedBrowser):
             )
         elif "firefox" in browser_lower:
             launch_options = (
-                f'run --branch=stable --arch=x86_64 org.mozilla.firefox --kiosk https://{cleanSiteURL}'
+                f'run --branch=stable --arch={FLATPAK_ARCH} org.mozilla.firefox --kiosk https://{cleanSiteURL}'
             )
         elif "brave" in browser_lower:
             launch_options = (
-                f'run --arch=x86_64 com.brave.Browser --start-fullscreen --window-size=1280,800 '
+                f'run --arch={FLATPAK_ARCH} com.brave.Browser --start-fullscreen --window-size=1280,800 '
                 f'--force-device-scale-factor=1.00 --no-first-run --no-default-browser-check '
                 f'--enable-features=OverlayScrollbar,HardwareMediaKeyHandling '
                 f'https://{cleanSiteURL}'
             )
         elif "vivaldi" in browser_lower:
             launch_options = (
-                f'run --branch=stable --arch=x86_64 '
+                f'run --branch=stable --arch={FLATPAK_ARCH} '
                 f'--command=vivaldi com.vivaldi.Vivaldi '
                 f'--window-size=1280,800 --start-fullscreen '
                 f'--force-device-scale-factor=1.00 '
@@ -282,7 +284,7 @@ def addCustomSite(customSiteJSON, selectedBrowser):
             )
         elif "librewolf" in browser_lower:
             launch_options = (
-                f'run --branch=stable --arch=x86_64 '
+                f'run --branch=stable --arch={FLATPAK_ARCH} '
                 f'io.gitlab.librewolf-community '
                 f'--kiosk https://{cleanSiteURL}'
             )
@@ -361,6 +363,12 @@ def check_if_shortcut_exists(display_name, exe_path, start_dir, launch_options):
                         decky_plugin.logger.info(f"Existing website shortcut found for {display_name}. Skipping creation.")
                         return True
 
+                    # Same target already added by another tool under its own wrapper/name
+                    # (e.g. ArmadaOS wraps Xodus games and Flatpaks with armada-game-launch)
+                    if is_wrapped_duplicate(s, stripped_exe_path, launch_options):
+                        decky_plugin.logger.info(f"Existing shortcut for the same target found for {display_name}. Skipping creation.")
+                        return True
+
             except Exception as e:
                 decky_plugin.logger.error(f"Error reading shortcuts file: {e}")
     else:
@@ -368,6 +376,20 @@ def check_if_shortcut_exists(display_name, exe_path, start_dir, launch_options):
 
     return False
 
+
+
+def is_wrapped_duplicate(shortcut, exe_path, launch_options):
+    if not exe_path or not launch_options:
+        return False
+    try:
+        key = shlex.split(launch_options)[-1]  # game id / Flatpak app id
+    except ValueError:
+        return False
+    if len(key) < 8 or key.startswith(("%", "-")):
+        return False
+    target = os.path.basename(exe_path.rstrip("/"))
+    combined = f"{shortcut.get('exe') or shortcut.get('Exe') or ''} {shortcut.get('LaunchOptions') or ''}"
+    return key in combined and target in combined
 
 
 # Add or update the proton compatibility settings
@@ -384,6 +406,10 @@ def add_compat_tool(exe_path, launchoptions, startingdir):
     elif any(x in launchoptions for x in ['jp.', 'com.', 'online.']):
         if steam_compat_marker not in launchoptions:
             return False
+    # Native Linux targets (e.g. /usr/bin/heroic, Flatpaks) must not be forced through Proton
+    if steam_compat_marker not in launchoptions and \
+       not exe_path.strip('"').lower().endswith(('.exe', '.msi', '.bat')):
+        return False
     return compat_tool_name
 
 
