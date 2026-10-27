@@ -2942,8 +2942,9 @@ function install_launcher {
                 # skip if glob didn't expand to real dirs
                 [[ -d "$root" ]] || continue
 
-                if [[ -x "$root/steamapps/common/Proton - Experimental/proton" ]]; then
-                    proton_dir="$root/steamapps/common/Proton - Experimental"
+                # arm64 build; the x86 "Proton - Experimental" would run under FEX
+                if [[ -x "$root/steamapps/common/Proton Experimental (ARM64)/proton" ]]; then
+                    proton_dir="$root/steamapps/common/Proton Experimental (ARM64)"
                     break
                 fi
             done
