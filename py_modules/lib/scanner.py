@@ -893,16 +893,12 @@ def get_local_tagged_artwork(appname, steamid3, logged_in_home):
     for filename in files:
         file_path = os.path.join(grid_dir, filename)
         try:
-            result = subprocess.run(
-                ["getfattr", "-n", "user.xdg.tags", "--only-values", file_path],
-                capture_output=True,
-                text=True,
-                check=False
-            )
-            if result.returncode != 0:
+            # Read the xattr in-process: spawning getfattr per file is ~1s each under FEX (minutes per launcher)
+            try:
+                tag = os.getxattr(file_path, "user.xdg.tags").decode("utf-8", "replace").strip()
+            except OSError:
                 continue
 
-            tag = result.stdout.strip()
             if tag == appname:
                 decky_plugin.logger.info(f"Found tagged file for {appname}: {file_path}")
                 with open(file_path, 'rb') as f:
@@ -1087,6 +1083,8 @@ def add_launchers():
         ('Playstation Plus', 'psplusshortcutdirectory', 'pspluslaunchoptions', 'psplusstartingdir'),
         ('VK Play', 'vkplayshortcutdirectory', 'vkplaylaunchoptions', 'vkplaystartingdir'),
         ('HoYoPlay', 'hoyoplayshortcutdirectory', 'hoyoplaylaunchoptions', 'hoyoplaystartingdir'),
+        ('Nexon Launcher', 'nexonshortcutdirectory', 'nexonlaunchoptions', 'nexonstartingdir'),
+        ('Plarium Play', 'plariumshortcutdirectory', 'plariumlaunchoptions', 'plariumstartingdir'),
         ('Game Jolt Client', 'gamejoltshortcutdirectory', 'gamejoltlaunchoptions', 'gamejoltstartingdir'),
         ('Artix Game Launcher', 'artixgameshortcutdirectory', 'artixgamelaunchoptions', 'artixgamestartingdir'),
         ('ARC Launcher', 'arcshortcutdirectory', 'arclaunchoptions', 'arcstartingdir'),
