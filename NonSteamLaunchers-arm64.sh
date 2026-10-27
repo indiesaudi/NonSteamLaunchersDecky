@@ -8,6 +8,10 @@ if [[ "$(uname -m)" != "aarch64" && ! -e /lib/ld-linux-aarch64.so.1 ]]; then
     exit 1
 fi
 
+# FEX's reduced x87 precision (on in ArmadaOS's system FEX config) corrupts strings in 32-bit
+# Inno Setup/Delphi installers ("File not found" becomes "Hile not fpund") and they stall on an error box
+export FEX_X87REDUCEDPRECISION=0
+
 set -x              # activate debugging (execution shown)
 set -o pipefail     # capture error from pipes
 
@@ -2996,12 +3000,16 @@ function install_launcher {
             elif [ "$launcher_name" = "Rockstar Games Launcher" ]; then
                 install_rockstar
             elif [ "$launcher_name" = "ARC Launcher" ]; then
-                "$STEAM_RUNTIME" -- "$proton_dir/proton" run "$arc_file"
-                pid=$!
-                while pgrep -x "Arc3Install_202" > /dev/null; do
-                    sleep 1
+                # Inno Setup installs only the updater; ArcLauncher.exe downloads Arc.exe on first run
+                "$STEAM_RUNTIME" -- "$proton_dir/proton" run "$arc_file" /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-
+                arc_dir="${STEAM_COMPAT_DATA_PATH}/pfx/drive_c/Program Files (x86)/Arc"
+                "$STEAM_RUNTIME" -- "$proton_dir/proton" run "$arc_dir/ArcLauncher.exe" &
+                end=$((SECONDS+300))
+                while [ ! -f "$arc_dir/Arc.exe" ] && [ $SECONDS -lt $end ]; do
+                    sleep 2
                 done
-                sleep 5
+                sleep 15
+                pkill -f 'Files \(x86\)\\Arc\\'
                 echo "ARC Launcher installation complete."
             else
                 "$STEAM_RUNTIME" -- "$proton_dir/proton" run ${run_command} &
@@ -3070,7 +3078,8 @@ install_launcher "VK Play" "VKPlayLauncher" "$vkplay_file" "$vkplay_url" "$vkpla
 install_launcher "HoYoPlay" "HoYoPlayLauncher" "$hoyoplay_file" "$hoyoplay_url" "" "85" "" "install_hoyo" true
 
 # Install Nexon Launcher
-install_launcher "Nexon Launcher" "NexonLauncher" "$nexon_file" "$nexon_url" "$nexon_file" "86" "" "install_nexon" true
+# NSIS installer; /S installs without the language/wizard dialogs
+install_launcher "Nexon Launcher" "NexonLauncher" "$nexon_file" "$nexon_url" "$nexon_file /S" "86" "" "install_nexon" true
 
 # Install GameJolt Launcher
 install_launcher "Game Jolt Client" "GameJoltLauncher" "$gamejolt_file" "$gamejolt_url" "$gamejolt_file /silent" "67" "" ""
