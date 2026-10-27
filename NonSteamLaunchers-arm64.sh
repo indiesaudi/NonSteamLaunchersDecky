@@ -1606,7 +1606,7 @@ handle_uninstall_common() {
 
     # Run the uninstaller using Proton with the specified options
     echo "Running uninstaller using Proton with the specified options"
-    "$STEAM_RUNTIME" "$proton_dir/proton" run "$uninstaller_path" $uninstaller_options
+    "$STEAM_RUNTIME" -- "$proton_dir/proton" run "$uninstaller_path" $uninstaller_options
 
     # Display Zenity window
     zenity --info --text="$app_name has been uninstalled." --width=200 --height=150 &
@@ -2523,7 +2523,7 @@ function install_gog {
 
     # Run GalaxySetup.exe with the /VERYSILENT and /NORESTART options
     echo "Running GalaxySetup.exe with the /VERYSILENT and /NORESTART options"
-    "$STEAM_RUNTIME" "$proton_dir/proton" run GalaxySetup.exe /VERYSILENT /NORESTART &
+    "$STEAM_RUNTIME" -- "$proton_dir/proton" run GalaxySetup.exe /VERYSILENT /NORESTART &
 
     # Wait for the GalaxySetup.exe to finish running with a timeout of 90 seconds
     end=$((SECONDS+90))  # Timeout after 90 seconds
@@ -2591,7 +2591,7 @@ function install_battlenet {
 
     # Start the first installation
     echo "Starting first installation of Battle.net"
-    "$STEAM_RUNTIME" "$proton_dir/proton" run "$battle_file" Battle.net-Setup.exe --lang=enUS --installpath="C:\Program Files (x86)\Battle.net"
+    "$STEAM_RUNTIME" -- "$proton_dir/proton" run "$battle_file" Battle.net-Setup.exe --lang=enUS --installpath="C:\Program Files (x86)\Battle.net"
 
     # Optional: kill wineserver after installation is completely done
     #pkill wineserver
@@ -2642,7 +2642,7 @@ function install_humblegames {
     export STEAM_COMPAT_DATA_PATH=~/.steam/steam/steamapps/compatdata/$appid
     FIXED_SCHEME="\$(echo "\$1" | sed "s/?/\//")"
     echo \$FIXED_SCHEME > "${logged_in_home}/.local/share/Steam/steamapps/compatdata/$appid/pfx/drive_c/.auth"
-    "$STEAM_RUNTIME" "$proton_dir/proton" run ~/.local/share/Steam/steamapps/compatdata/$appid/pfx/start-humble.cmd
+    "$STEAM_RUNTIME" -- "$proton_dir/proton" run ~/.local/share/Steam/steamapps/compatdata/$appid/pfx/start-humble.cmd
 EOF
     chmod +x "${logged_in_home}/.local/share/Steam/steamapps/compatdata/$appid/pfx/handle-humble-scheme"
 
@@ -2756,11 +2756,11 @@ function install_rockstar {
     )
 
     for key in "${!registry_keys[@]}"; do
-    "$STEAM_RUNTIME" "$proton_dir/proton" run reg add "$wine_registry_path" /v "$key" /t REG_SZ /d "${registry_keys[$key]}" /f
+    "$STEAM_RUNTIME" -- "$proton_dir/proton" run reg add "$wine_registry_path" /v "$key" /t REG_SZ /d "${registry_keys[$key]}" /f
     done
 
-    "$STEAM_RUNTIME" "$proton_dir/proton" run "$rstarInstallDir/Redistributables/VCRed/vc_redist.x64.exe" /install /quiet /norestart
-    "$STEAM_RUNTIME" "$proton_dir/proton" run "$rstarInstallDir/Redistributables/VCRed/vc_redist.x86.exe" /install /quiet /norestart
+    "$STEAM_RUNTIME" -- "$proton_dir/proton" run "$rstarInstallDir/Redistributables/VCRed/vc_redist.x64.exe" /install /quiet /norestart
+    "$STEAM_RUNTIME" -- "$proton_dir/proton" run "$rstarInstallDir/Redistributables/VCRed/vc_redist.x86.exe" /install /quiet /norestart
     wait
 }
 
@@ -2804,7 +2804,7 @@ function install_hoyo {
     cp "${target_dir}/launcher.exe" "${hoyo_dir}/launcher.exe" || { echo "Failed to copy launcher.exe"; return 1; }
 
     echo "Running HYP.exe..."
-    "$STEAM_RUNTIME" "$proton_dir/proton" run "${target_dir}/HYP.exe" || { echo "Failed to run HYP.exe"; return 1; } &
+    "$STEAM_RUNTIME" -- "$proton_dir/proton" run "${target_dir}/HYP.exe" || { echo "Failed to run HYP.exe"; return 1; } &
     sleep 5  # Wait for 5 seconds before terminating HYP.exe
     terminate_processes "HYP.exe"
 
@@ -2826,7 +2826,7 @@ install_psplus() {
         echo "Download successful. Running $installer silently..."
 
         # Start the installer with Proton and capture PID
-        "$STEAM_RUNTIME" "$proton_dir/proton" run "$installer"  /q /norestart &
+        "$STEAM_RUNTIME" -- "$proton_dir/proton" run "$installer"  /q /norestart &
         local pid=$!
 
         echo "Installer PID: $pid. Waiting for it to complete..."
@@ -2964,7 +2964,7 @@ function install_launcher {
         echo "Running ${file_name} using Proton with the specified command"
         if [ "$run_in_background" = true ]; then
             if [ "$launcher_name" = "GOG Galaxy" ]; then
-                "$STEAM_RUNTIME" "$proton_dir/proton" run "$exe_file" /silent &
+                "$STEAM_RUNTIME" -- "$proton_dir/proton" run "$exe_file" /silent &
                 install_gog2
             elif [ "$launcher_name" = "Battle.net" ]; then
 
@@ -2973,16 +2973,16 @@ function install_launcher {
             elif [ "$launcher_name" = "itch.io" ]; then
                 "$proton_dir/proton" run "$itchio_file" --silent &
             elif [ "$launcher_name" = "Amazon Games" ]; then
-                "$STEAM_RUNTIME" "$proton_dir/proton" run "$amazon_file" &
+                "$STEAM_RUNTIME" -- "$proton_dir/proton" run "$amazon_file" &
                 install_amazon
             elif [ "$launcher_name" = "Humble Games Collection" ]; then
-                "$STEAM_RUNTIME" "$proton_dir/proton" run "$humblegames_file" /S /D="C:\Program Files\Humble App"
+                "$STEAM_RUNTIME" -- "$proton_dir/proton" run "$humblegames_file" /S /D="C:\Program Files\Humble App"
                 wait
                 install_humblegames
             elif [ "$launcher_name" = "Rockstar Games Launcher" ]; then
                 install_rockstar
             elif [ "$launcher_name" = "ARC Launcher" ]; then
-                "$STEAM_RUNTIME" "$proton_dir/proton" run "$arc_file"
+                "$STEAM_RUNTIME" -- "$proton_dir/proton" run "$arc_file"
                 pid=$!
                 while pgrep -x "Arc3Install_202" > /dev/null; do
                     sleep 1
@@ -2990,10 +2990,10 @@ function install_launcher {
                 sleep 5
                 echo "ARC Launcher installation complete."
             else
-                "$STEAM_RUNTIME" "$proton_dir/proton" run ${run_command} &
+                "$STEAM_RUNTIME" -- "$proton_dir/proton" run ${run_command} &
             fi
         else
-            "$STEAM_RUNTIME" "$proton_dir/proton" run ${run_command}
+            "$STEAM_RUNTIME" -- "$proton_dir/proton" run ${run_command}
         fi
 
 
