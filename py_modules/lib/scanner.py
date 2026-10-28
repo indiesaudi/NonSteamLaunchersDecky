@@ -409,6 +409,47 @@ def is_wrapped_duplicate(shortcut, exe_path, launch_options):
     return key in combined and target in combined
 
 
+def strip_nsl_additions(launch_options):
+    """Launch options without what NSL or ArmadaOS add around them, to tell NSL defaults from user edits"""
+    return " ".join(
+        token
+        for token in (launch_options or "").split()
+        if token not in (ARMADA_LAUNCH_WRAPPER, "LD_PRELOAD=", "/usr/bin/env", "%command%")
+        and not token.startswith("FEX_APP_CONFIG=")
+    )
+
+
+def shortcut_target(exe):
+    quoted = re.match(r'"([^"]*)"', exe or "")
+    return os.path.basename(quoted.group(1) if quoted else (exe or "").strip())
+
+
+def find_outdated_nsl_shortcut(appname, exe, launch_options):
+    """The existing shortcut for appname if it still has an earlier NSL target or launch options, else None.
+
+    NSL fixes change some launchers' targets (ARC's virtual desktop) or launch options (no Steam overlay for
+    Heroic and Amazon, Amazon's FEX profile), but existing shortcuts are never touched again, so move the ones
+    still on NSL's earlier values over. Anything the user edited is left alone.
+    """
+    vdf_path = f"{logged_in_home}/.steam/root/userdata/{steamid3}/config/shortcuts.vdf"
+    try:
+        with open(vdf_path, 'rb') as file:
+            existing = vdf.binary_loads(file.read()).get('shortcuts', {}).values()
+    except Exception:
+        return None
+    for s in existing:
+        if (s.get('appname') or s.get('AppName')) != appname:
+            continue
+        current_exe = s.get('exe') or s.get('Exe') or ''
+        current_options = s.get('LaunchOptions') or ''
+        if current_exe == exe and current_options == launch_options:
+            return None
+        target = shortcut_target(current_exe)
+        if target and target in exe and strip_nsl_additions(current_options) == strip_nsl_additions(launch_options):
+            return s
+    return None
+
+
 # Add or update the proton compatibility settings
 def add_compat_tool(exe_path, launchoptions, startingdir):
     steam_compat_marker = 'STEAM_COMPAT_DATA_PATH'
@@ -933,6 +974,20 @@ def create_new_entry(exe, appname, launchoptions, startingdir, launcher):
 
     if launchoptions is None:
         launchoptions = ''
+
+    if platform.system() != "Windows":
+        outdated = find_outdated_nsl_shortcut(appname, exe, wrap_for_armada(launchoptions))
+        if outdated is not None:
+            # The frontend updates the existing shortcut in place instead of adding one
+            decky_shortcuts[appname] = {
+                'appname': appname,
+                'appid': int(outdated.get('appid', 0)) & 0xFFFFFFFF,
+                'exe': exe,
+                'LaunchOptions': wrap_for_armada(launchoptions),
+                'Update': True,
+            }
+            decky_plugin.logger.info(f"Updating {appname} to NSL's current target and launch options.")
+            return
 
     if check_if_shortcut_exists(appname, exe, startingdir, launchoptions):
         return
