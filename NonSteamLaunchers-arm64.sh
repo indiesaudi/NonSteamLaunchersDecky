@@ -2898,6 +2898,27 @@ function nsl_fix_netfx_installroot {
     "$STEAM_RUNTIME" -- "$proton_dir/proton" run reg add 'HKLM\Software\Microsoft\.NETFramework' /v InstallRoot /t REG_SZ /d 'C:\windows\Microsoft.NET\Framework\' /f /reg:32
 }
 
+install_stove() {
+    # STOVE's UI is WebView2; the standalone x64 runtime installs silently in the prefix
+    local url="https://go.microsoft.com/fwlink/?linkid=2124701"
+    local installer="${logged_in_home}/Downloads/NonSteamLaunchersInstallation/MicrosoftEdgeWebView2RuntimeInstallerX64.exe"
+
+    if [ -d "${STEAM_COMPAT_DATA_PATH}/pfx/drive_c/Program Files (x86)/Microsoft/EdgeWebView/Application" ]; then
+        echo "WebView2 runtime already installed."
+        return
+    fi
+
+    echo "Attempting to download $installer..."
+
+    if curl -fLo "$installer" "$url"; then
+        echo "Download successful. Running $installer silently..."
+        "$STEAM_RUNTIME" -- "$proton_dir/proton" run "$installer" /silent /install
+        echo "$installer exited with code $?."
+    else
+        echo "Download failed. Skipping installation."
+    fi
+}
+
 #Launcher Installs
 function install_launcher {
     launcher_name=$1
@@ -3027,6 +3048,20 @@ function install_launcher {
                 rm -rf "${plarium_dir:?}/${plarium_version}"
                 mv "$plarium_dir/build" "$plarium_dir/${plarium_version}"
                 echo "Plarium Play installation complete."
+            elif [ "$launcher_name" = "STOVE Client" ]; then
+                # The setup wizard crashes (see nsl-stove.bat below); all it installs is this StoveLauncher.7z
+                stove_dir="${STEAM_COMPAT_DATA_PATH}/pfx/drive_c/ProgramData/Smilegate/STOVE"
+                stove_tmp=$(mktemp -d)
+                7z x -y -o"$stove_tmp" "$stove_file" STOVE/StoveLauncher.7z > /dev/null
+                mkdir -p "$stove_dir"
+                7z x -y -o"$stove_dir" "$stove_tmp/STOVE/StoveLauncher.7z" > /dev/null
+                rm -rf "$stove_tmp"
+                # Wine on ARM leaves ProcessorNameString unset and STOVE throws without it. Wine rebuilds that
+                # key every session, so the shortcut starts STOVE through this wrapper, which sets it first
+                printf '%s\r\n' '@echo off' \
+                    'reg add "HKLM\HARDWARE\DESCRIPTION\System\CentralProcessor\0" /v ProcessorNameString /t REG_SZ /d "ARMv8 Processor" /f >nul 2>&1' \
+                    'start "" /wait %1' > "$stove_dir/nsl-stove.bat"
+                echo "STOVE Client installation complete."
             else
                 "$STEAM_RUNTIME" -- "$proton_dir/proton" run ${run_command} &
             fi
@@ -3603,6 +3638,10 @@ write_env_vars() {
     # so run it inside a Wine virtual desktop, which is one plain window gamescope can show
     if [[ "$launcher_name" == "arc" ]]; then
         shortcut_directory="\"${logged_in_home}/.local/share/Steam/steamapps/compatdata/${launcher_dir_name}/pfx/drive_c/windows/explorer.exe\" /desktop=ARC,1920x1080 \"C:\\Program Files (x86)\\Arc\\Arc.exe\""
+    fi
+    # STOVE starts through the wrapper the installer writes (it sets the CPU name STOVE needs first)
+    if [[ "$launcher_name" == "stove" && -f "$(dirname "${launcher_path}")/nsl-stove.bat" ]]; then
+        shortcut_directory="\"${logged_in_home}/.local/share/Steam/steamapps/compatdata/${launcher_dir_name}/pfx/drive_c/windows/system32/cmd.exe\" /c \"C:\\ProgramData\\Smilegate\\STOVE\\nsl-stove.bat\" \"C:\\ProgramData\\Smilegate\\STOVE\\STOVE.exe\""
     fi
     local launch_options="STEAM_COMPAT_DATA_PATH=\"${logged_in_home}/.local/share/Steam/steamapps/compatdata/${launcher_dir_name}/\" %command%"
     # Amazon Games' 32-bit .NET service deadlocks under ArmadaOS's default FEX profile, so give it the
