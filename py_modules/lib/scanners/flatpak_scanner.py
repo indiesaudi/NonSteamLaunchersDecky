@@ -102,10 +102,12 @@ def heroic_scanner(logged_in_home, create_new_entry):
         return
 
     try:
+        # Keep Steam's overlay library out of Heroic: Electron SIGKILLs its helper processes on exit, and one
+        # killed while the preloaded overlay holds Steam's IPC lock (SysMgrMutex) freezes the whole Steam UI
         create_new_entry(
             f'"{heroic_exe}"',
             "Heroic Games Launcher",
-            "",
+            "LD_PRELOAD= %command%",
             f'"{os.path.dirname(heroic_exe)}"',
             "NonSteamLaunchers"
         )
